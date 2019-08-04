@@ -11,6 +11,7 @@ namespace PhoneBook
         static void Main(string[] args)
         {
             string command;
+            PhoneBookCommands phoneBookCommands = new PhoneBookCommands();
 
             Console.WriteLine("WELCOME TO YOUR PHONE BOOK");
 
@@ -27,7 +28,6 @@ namespace PhoneBook
                     case "c":
                     {
                         string contactName, contactPhoneNumber;
-                        CreateContactHandler createContactHandler = new CreateContactHandler();
 
                         Console.Write("Input a contact name: ");
                         contactName = Console.ReadLine();
@@ -36,14 +36,13 @@ namespace PhoneBook
                         contactPhoneNumber = Console.ReadLine();
                         Console.WriteLine();
 
-                        createContactHandler.CreateContact(new Contact(contactName, contactPhoneNumber));
+                        phoneBookCommands.CreateContact(new Contact(contactName, contactPhoneNumber));
 
                         break;
                     }
                     case "e":
                     {
                         string contactData, newContactName, newContactPhoneNumber;
-                        EditContactHandler editContactHandler = new EditContactHandler();
 
                         Console.Write("Input any contact data to find a contact: ");
                         contactData = Console.ReadLine();
@@ -55,27 +54,25 @@ namespace PhoneBook
                         newContactPhoneNumber = Console.ReadLine();
                         Console.WriteLine();
 
-                        editContactHandler.EditContact(contactData, new Contact(newContactName, newContactPhoneNumber));
+                        phoneBookCommands.EditContact(contactData, new Contact(newContactName, newContactPhoneNumber));
 
                         break;
                     }
                     case "r":
                     {
                         string contactData;
-                        RemoveContactHandler removeContactHandler = new RemoveContactHandler();
 
                         Console.Write("Input any contact data to find a contact: ");
                         contactData = Console.ReadLine();
                         Console.WriteLine();
 
-                        removeContactHandler.RemoveContact(contactData);
+                        phoneBookCommands.RemoveContact(contactData);
 
                         break;
                     }
                     case "v":
                     {
-                        ViewContactHandler viewContactHandler = new ViewContactHandler();
-                        viewContactHandler.ViewContact();
+                        phoneBookCommands.ViewContact();
 
                         break;
                     }
@@ -88,7 +85,7 @@ namespace PhoneBook
         }
     }
 
-    class CreateContactHandler
+    class PhoneBookCommands
     {
         ContactSerialization contactSerialization = new ContactSerialization();
 
@@ -96,24 +93,21 @@ namespace PhoneBook
         {
             if (contacToCreate != null)
             {
-                foreach (char contactPhoneNumberSymbol in contacToCreate.contactPhoneNumber)
+                if (DoesStringContainOnlyDigits(contacToCreate.contactPhoneNumber))
                 {
-                    if (contactPhoneNumberSymbol < 48 || contactPhoneNumberSymbol > 57)
+                    if (!string.IsNullOrWhiteSpace(contacToCreate.contactName) && !string.IsNullOrWhiteSpace(contacToCreate.contactPhoneNumber))
                     {
-                        Console.WriteLine("'contactPhoneNumber' needs to contain only digits");
-
-                        return;
+                        contactSerialization.SerializeContact(contacToCreate);
+                        Console.WriteLine("'contacToCreate' was successfully created");
                     }
-                }
-
-                if (!string.IsNullOrWhiteSpace(contacToCreate.contactName) && !string.IsNullOrWhiteSpace(contacToCreate.contactPhoneNumber))
-                {
-                    contactSerialization.SerializeContact(contacToCreate);
-                    Console.WriteLine("'contacToCreate' was successfully created");
+                    else
+                    {
+                        Console.WriteLine("'contactName' or 'contactPhoneNumber' equals null or white space");
+                    }
                 }
                 else
                 {
-                    Console.WriteLine("'contactName' or 'contactPhoneNumber' equals null or white space");
+                    Console.WriteLine("'contactPhoneNumber' does not contain only digits");
                 }
             }
             else
@@ -121,11 +115,6 @@ namespace PhoneBook
                 Console.WriteLine("'contacToCreate' equals null");
             }
         }
-    }
-
-    class EditContactHandler
-    {
-        ContactSerialization contactSerialization = new ContactSerialization();
 
         internal void EditContact(string contactData, Contact contactNewVersion)
         {
@@ -138,39 +127,36 @@ namespace PhoneBook
 
                     if (currentContacts != null)
                     {
-                        foreach (char contactPhoneNumberSymbol in contactNewVersion.contactPhoneNumber)
+                        if (DoesStringContainOnlyDigits(contactNewVersion.contactPhoneNumber))
                         {
-                            if (contactPhoneNumberSymbol < 48 || contactPhoneNumberSymbol > 57)
+                            foreach (Contact currentContact in currentContacts)
                             {
-                                Console.WriteLine("'contactPhoneNumber' needs to contain only digits");
+                                if (currentContact.contactName == contactData || currentContact.contactPhoneNumber == contactData)
+                                {
+                                    editedContactCounter++;
 
-                                return;
+                                    currentContact.contactName = contactNewVersion.contactName;
+                                    currentContact.contactPhoneNumber = contactNewVersion.contactPhoneNumber;
+
+                                    Console.WriteLine("'curentContact' was successfully edited:");
+                                    Console.WriteLine(contactNewVersion.contactName);
+                                    Console.WriteLine(contactNewVersion.contactPhoneNumber + "\n");
+                                }
                             }
-                        }
 
-                        foreach (Contact currentContact in currentContacts)
-                        {
-                            if (currentContact.contactName == contactData || currentContact.contactPhoneNumber == contactData)
+                            if (editedContactCounter > 0)
                             {
-                                editedContactCounter++;
-                                
-                                currentContact.contactName = contactNewVersion.contactName;
-                                currentContact.contactPhoneNumber = contactNewVersion.contactPhoneNumber;
-
-                                Console.WriteLine("'curentContact' was successfully edited:");
-                                Console.WriteLine(contactNewVersion.contactName);
-                                Console.WriteLine(contactNewVersion.contactPhoneNumber + "\n");
+                                contactSerialization.SerializeContacts(currentContacts);
+                                Console.WriteLine("'curentContacts' was successfully serialized");
                             }
-                        }
-
-                        if (editedContactCounter > 0)
-                        {
-                            contactSerialization.SerializeContacts(currentContacts);
-                            Console.WriteLine("'curentContacts' was successfully serialized");
+                            else
+                            {
+                                Console.WriteLine("No contacts were not found with this 'contactData'");
+                            }
                         }
                         else
                         {
-                            Console.WriteLine("No contacts were not found with this 'contactData'");
+                            Console.WriteLine("'contactPhoneNumber' does not contain only digits");
                         }
                     }
                     else
@@ -188,11 +174,6 @@ namespace PhoneBook
                 Console.WriteLine("'contactNewVersion' equals null");
             }
         }
-    }
-
-    class RemoveContactHandler
-    {
-        ContactSerialization contactSerialization = new ContactSerialization();
 
         internal void RemoveContact(string contactData)
         {
@@ -228,11 +209,6 @@ namespace PhoneBook
                 Console.WriteLine("'contactData' equals null or white space");
             }
         }
-    }
-
-    class ViewContactHandler
-    {
-        ContactSerialization contactSerialization = new ContactSerialization();
 
         internal void ViewContact()
         {
@@ -252,6 +228,19 @@ namespace PhoneBook
             {
                 Console.WriteLine("'contactNewVersion' equals null");
             }
+        }
+
+        bool DoesStringContainOnlyDigits(string stringToCheck)
+        {
+            foreach (char charToCheck in stringToCheck)
+            {
+                if (charToCheck < 48 || charToCheck > 57)
+                {
+                    return false;
+                }
+            }
+            
+            return true;
         }
     }
 
