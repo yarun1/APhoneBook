@@ -8,10 +8,13 @@ namespace PhoneBook
 {
     class Program
     {
+        string contactFileName = "contacts.json";
+        DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(List<Contact>));
+
         static void Main(string[] args)
         {
             string command;
-            PhoneBookCommands phoneBookCommands = new PhoneBookCommands();
+            Program program = new Program();
 
             Console.WriteLine("WELCOME TO YOUR PHONE BOOK");
 
@@ -22,7 +25,7 @@ namespace PhoneBook
 
                 command = Console.ReadLine();
                 Console.WriteLine();
-
+                    
                 switch (command)
                 {
                     case "c":
@@ -36,7 +39,7 @@ namespace PhoneBook
                         contactPhoneNumber = Console.ReadLine();
                         Console.WriteLine();
 
-                        phoneBookCommands.CreateContact(new Contact(contactName, contactPhoneNumber));
+                        program.CreateContact(new Contact(contactName, contactPhoneNumber));
 
                         break;
                     }
@@ -54,7 +57,7 @@ namespace PhoneBook
                         newContactPhoneNumber = Console.ReadLine();
                         Console.WriteLine();
 
-                        phoneBookCommands.EditContact(contactData, new Contact(newContactName, newContactPhoneNumber));
+                        program.EditContact(contactData, new Contact(newContactName, newContactPhoneNumber));
 
                         break;
                     }
@@ -66,13 +69,13 @@ namespace PhoneBook
                         contactData = Console.ReadLine();
                         Console.WriteLine();
 
-                        phoneBookCommands.RemoveContact(contactData);
+                        program.RemoveContact(contactData);
 
                         break;
                     }
                     case "v":
                     {
-                        phoneBookCommands.ViewContact();
+                        program.ViewContact();
 
                         break;
                     }
@@ -83,13 +86,68 @@ namespace PhoneBook
                 }
             }
         }
-    }
 
-    class PhoneBookCommands
-    {
-        ContactSerialization contactSerialization = new ContactSerialization();
+        void SerializeContact(Contact contacToSerialize)
+        {
+            if (contacToSerialize != null)
+            {
+                List<Contact> curentContacts = DeserialzeContacts();
 
-        internal void CreateContact(Contact contacToCreate)
+                if (curentContacts == null)
+                {
+                    curentContacts = new List<Contact>();
+                }
+
+                curentContacts.Add(contacToSerialize);
+
+                using (FileStream fileStream = new FileStream(contactFileName, FileMode.OpenOrCreate))
+                {
+                    serializer.WriteObject(fileStream, curentContacts);
+                }
+
+                Console.WriteLine("'contacToSerialize' was successfully serialized");
+            }
+            else
+            {
+                Console.WriteLine("'contacToSerialize' equals null");
+            }
+        }
+
+        void SerializeContacts(List<Contact> contactsToSerialize)
+        {
+            using (FileStream fileStream = new FileStream(contactFileName, FileMode.Create))
+            {
+                serializer.WriteObject(fileStream, contactsToSerialize);
+                Console.WriteLine("'contactsToSerialize' was successfully serialized");
+            }
+        }
+
+        List<Contact> DeserialzeContacts()
+        {
+            FileInfo contactFileInfo = new FileInfo(contactFileName);
+
+            if (contactFileInfo.Exists && contactFileInfo.Length != 0)
+            {
+                List<Contact> curentContacts;
+
+                using (FileStream fileStream = new FileStream(contactFileName, FileMode.OpenOrCreate))
+                {
+                    curentContacts = (List<Contact>)serializer.ReadObject(fileStream);
+                }
+
+                Console.WriteLine("Contacts were successfully deserialized from '{0}'", contactFileName);
+
+                return curentContacts;
+            }
+            else
+            {
+                Console.WriteLine("'{0}' does not exist or it is empty", contactFileName);
+
+                return null;
+            }
+        }
+
+        void CreateContact(Contact contacToCreate)
         {
             if (contacToCreate != null)
             {
@@ -97,7 +155,7 @@ namespace PhoneBook
                 {
                     if (!string.IsNullOrWhiteSpace(contacToCreate.contactName) && !string.IsNullOrWhiteSpace(contacToCreate.contactPhoneNumber))
                     {
-                        contactSerialization.SerializeContact(contacToCreate);
+                        SerializeContact(contacToCreate);
                         Console.WriteLine("'contacToCreate' was successfully created");
                     }
                     else
@@ -116,19 +174,20 @@ namespace PhoneBook
             }
         }
 
-        internal void EditContact(string contactData, Contact contactNewVersion)
+        void EditContact(string contactData, Contact contactNewVersion)
         {
             if (contactNewVersion != null && !string.IsNullOrWhiteSpace(contactData))
             {
                 if (!string.IsNullOrWhiteSpace(contactNewVersion.contactName) && !string.IsNullOrWhiteSpace(contactNewVersion.contactPhoneNumber))
                 {
-                    int editedContactCounter = 0;
-                    List<Contact> currentContacts = contactSerialization.DeserialzeContacts();
-
-                    if (currentContacts != null)
+                    if (DoesStringContainOnlyDigits(contactNewVersion.contactPhoneNumber))
                     {
-                        if (DoesStringContainOnlyDigits(contactNewVersion.contactPhoneNumber))
+                        List<Contact> currentContacts = DeserialzeContacts();
+
+                        if (currentContacts != null)
                         {
+                            int editedContactCounter = 0;
+
                             foreach (Contact currentContact in currentContacts)
                             {
                                 if (currentContact.contactName == contactData || currentContact.contactPhoneNumber == contactData)
@@ -146,7 +205,7 @@ namespace PhoneBook
 
                             if (editedContactCounter > 0)
                             {
-                                contactSerialization.SerializeContacts(currentContacts);
+                                SerializeContacts(currentContacts);
                                 Console.WriteLine("'curentContacts' was successfully serialized");
                             }
                             else
@@ -156,13 +215,14 @@ namespace PhoneBook
                         }
                         else
                         {
-                            Console.WriteLine("'contactPhoneNumber' does not contain only digits");
+                            Console.WriteLine("'curentContacts' equals null");
                         }
                     }
                     else
                     {
-                        Console.WriteLine("'curentContacts' equals null");
+                        Console.WriteLine("'contactPhoneNumber' does not contain only digits");
                     }
+                    
                 }
                 else
                 {
@@ -171,15 +231,15 @@ namespace PhoneBook
             }
             else
             {
-                Console.WriteLine("'contactNewVersion' equals null");
+                Console.WriteLine("'contactNewVersion' equals null or 'contactData' equlas null or white space");
             }
         }
 
-        internal void RemoveContact(string contactData)
+        void RemoveContact(string contactData)
         {
             if (!string.IsNullOrWhiteSpace(contactData))
             {
-                List<Contact> curentContacts = contactSerialization.DeserialzeContacts();
+                List<Contact> curentContacts = DeserialzeContacts();
 
                 if (curentContacts != null)
                 {
@@ -197,7 +257,7 @@ namespace PhoneBook
                         }
                     }
 
-                    contactSerialization.SerializeContacts(editedContacts);
+                    SerializeContacts(editedContacts);
                 }
                 else
                 {
@@ -210,9 +270,9 @@ namespace PhoneBook
             }
         }
 
-        internal void ViewContact()
+        void ViewContact()
         {
-            List<Contact> curentContacts = contactSerialization.DeserialzeContacts();
+            List<Contact> curentContacts = DeserialzeContacts();
 
             if (curentContacts != null)
             {
@@ -239,76 +299,11 @@ namespace PhoneBook
                     return false;
                 }
             }
-            
+
             return true;
         }
     }
 
-    class ContactSerialization
-    {
-        string contactFileName = "contacts.json";
-        DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(List<Contact>));
-
-        internal void SerializeContact(Contact contacToSerialize)
-        {
-            if (contacToSerialize != null)
-            {
-                List<Contact> curentContacts = DeserialzeContacts();
-                
-                if (curentContacts == null)
-                {
-                    curentContacts = new List<Contact>();
-                }
-
-                curentContacts.Add(contacToSerialize);
-
-                using (FileStream fileStream = new FileStream("contacts.json", FileMode.OpenOrCreate))
-                {
-                    serializer.WriteObject(fileStream, curentContacts);
-                }
-
-                Console.WriteLine("'contacToSerialize' was successfully serialized");
-            }
-            else
-            {
-                Console.WriteLine("'contacToSerialize' equals null");
-            }
-        }
-
-        internal void SerializeContacts(List<Contact> contactsToSerialize)
-        {
-            using (FileStream fileStream = new FileStream("contacts.json", FileMode.Create))
-            {
-                serializer.WriteObject(fileStream, contactsToSerialize);
-                Console.WriteLine("'contactsToSerialize' was successfully serialized");
-            }
-        }
-
-        internal List<Contact> DeserialzeContacts()
-        {
-            FileInfo contactFileInfo = new FileInfo(contactFileName);
-
-            if (contactFileInfo.Exists && contactFileInfo.Length != 0)
-            {
-                List<Contact> curentContacts;
-
-                using (FileStream fileStream = new FileStream(contactFileName, FileMode.OpenOrCreate))
-                {
-                    curentContacts = (List<Contact>)serializer.ReadObject(fileStream);
-                }
-
-                Console.WriteLine("Contacts were successfully deserialized from 'contacts.json'");
-
-                return curentContacts;
-            }
-            else
-            {
-                Console.WriteLine("'contacts.json' does not exist or it is empty");
-
-                return null;
-            }
-        }
-    }
 
     [DataContract]
     class Contact
