@@ -1,49 +1,57 @@
 using System;
-using System.Collections.Generic;
-using System.Runtime.Serialization.Json;
-using System.Runtime.Serialization;
 using System.IO;
 
 namespace PhoneBook
 {
     class Program
     {
-        string contactFileName = "contacts.json";
-        DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(List<Contact>));
+        string contactNamesFile = "ContactNames.txt", contactPhoneNumbersFile = "ContactPhoneNumbers.txt";
 
         static void Main(string[] args)
         {
-            string command;
+            string phoneBookCommand;
             Program program = new Program();
+
+            const string CONTACT_CREATING = "c";
+            const string CONTACT_EDITING = "e";
+            const string CONTACT_REMOVING = "r";
+            const string CONTACT_VIEWING = "v";
+            const string PROGRAM_EXITING = "q";
 
             Console.WriteLine("WELCOME TO YOUR PHONE BOOK");
 
             while (true)
             {
-                Console.WriteLine("\nPress 'c' to create a new contact \nPress 'e' to edit an existing contact \nPress 'r' to remove a contact \nPress 'v' to view all your contacts \nPress 'q' to quit the program \n");
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine("\n");
+                Console.WriteLine("Press 'c' to create a new contact");
+                Console.WriteLine("Press 'e' to edit an existing contact");
+                Console.WriteLine("Press 'r' to remove a contact");
+                Console.WriteLine("Press 'v' to view all your contacts");
+                Console.WriteLine("Press 'q' to quit the program \n");
+                Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.Write("Input a command: ");
 
-                command = Console.ReadLine();
+                phoneBookCommand = Console.ReadLine();
                 Console.WriteLine();
-                    
-                switch (command)
+
+                switch (phoneBookCommand)
                 {
-                    case "c":
+                    case CONTACT_CREATING:
                     {
-                        string contactName, contactPhoneNumber;
+                        string contactNameToCreate, contactPhoneNumberToCreate;
 
                         Console.Write("Input a contact name: ");
-                        contactName = Console.ReadLine();
-                        
+                        contactNameToCreate = Console.ReadLine();
+
                         Console.Write("Input a contact phone number: ");
-                        contactPhoneNumber = Console.ReadLine();
+                        contactPhoneNumberToCreate = Console.ReadLine();
                         Console.WriteLine();
 
-                        program.CreateContact(new Contact(contactName, contactPhoneNumber));
-
+                        program.CreateContact(contactNameToCreate, contactPhoneNumberToCreate);
                         break;
                     }
-                    case "e":
+                    case CONTACT_EDITING:
                     {
                         string contactData, newContactName, newContactPhoneNumber;
 
@@ -57,11 +65,10 @@ namespace PhoneBook
                         newContactPhoneNumber = Console.ReadLine();
                         Console.WriteLine();
 
-                        program.EditContact(contactData, new Contact(newContactName, newContactPhoneNumber));
-
+                        program.EditContact(contactData, newContactName, newContactPhoneNumber);
                         break;
                     }
-                    case "r":
+                    case CONTACT_REMOVING:
                     {
                         string contactData;
 
@@ -70,16 +77,14 @@ namespace PhoneBook
                         Console.WriteLine();
 
                         program.RemoveContact(contactData);
-
                         break;
                     }
-                    case "v":
+                    case CONTACT_VIEWING:
                     {
-                        program.ViewContact();
-
+                        program.ViewContactList();
                         break;
                     }
-                    case "q":
+                    case PROGRAM_EXITING:
                     {
                         return;
                     }
@@ -87,214 +92,154 @@ namespace PhoneBook
             }
         }
 
-        void SerializeContact(Contact contacToSerialize)
+        void WriteContact(bool appendContact, string contactName, string contactPhoneNumber)
         {
-            if (contacToSerialize != null)
+            using (StreamWriter contactNameStreamWriter = new StreamWriter(contactNamesFile, appendContact))
             {
-                List<Contact> curentContacts = DeserialzeContacts();
-
-                if (curentContacts == null)
-                {
-                    curentContacts = new List<Contact>();
-                }
-
-                curentContacts.Add(contacToSerialize);
-
-                using (FileStream fileStream = new FileStream(contactFileName, FileMode.OpenOrCreate))
-                {
-                    serializer.WriteObject(fileStream, curentContacts);
-                }
-
-                Console.WriteLine("'contacToSerialize' was successfully serialized");
+                contactNameStreamWriter.Write(contactName + ' ');
             }
-            else
+
+            using (StreamWriter contactPhoneNumberStreamWriter = new StreamWriter(contactPhoneNumbersFile, appendContact))
             {
-                Console.WriteLine("'contacToSerialize' equals null");
+                contactPhoneNumberStreamWriter.Write(contactPhoneNumber + ' ');
             }
         }
 
-        void SerializeContacts(List<Contact> contactsToSerialize)
+        string[] ReadContactNames()
         {
-            using (FileStream fileStream = new FileStream(contactFileName, FileMode.Create))
+            using (StreamReader contactNameStreamReader = new StreamReader(new FileStream(contactNamesFile, FileMode.OpenOrCreate)))
             {
-                serializer.WriteObject(fileStream, contactsToSerialize);
-                Console.WriteLine("'contactsToSerialize' was successfully serialized");
+                string currentContactNames = contactNameStreamReader.ReadToEnd().Trim();
+                string[] contactNames = currentContactNames.Split();
+
+                return contactNames;
             }
         }
 
-        List<Contact> DeserialzeContacts()
+        string[] ReadContactPhoneNumbers()
         {
-            FileInfo contactFileInfo = new FileInfo(contactFileName);
-
-            if (contactFileInfo.Exists && contactFileInfo.Length != 0)
+            using (StreamReader contactPhoneNumberStreamReader = new StreamReader(new FileStream(contactPhoneNumbersFile, FileMode.OpenOrCreate)))
             {
-                List<Contact> curentContacts;
+                string currentContactPhoneNumbers = contactPhoneNumberStreamReader.ReadToEnd().Trim();
+                string[] contactNames = currentContactPhoneNumbers.Split();
 
-                using (FileStream fileStream = new FileStream(contactFileName, FileMode.OpenOrCreate))
-                {
-                    curentContacts = (List<Contact>)serializer.ReadObject(fileStream);
-                }
-
-                Console.WriteLine("Contacts were successfully deserialized from '{0}'", contactFileName);
-
-                return curentContacts;
-            }
-            else
-            {
-                Console.WriteLine("'{0}' does not exist or it is empty", contactFileName);
-
-                return null;
+                return contactNames;
             }
         }
 
-        void CreateContact(Contact contacToCreate)
+        void CreateContact(string contactNameToCreate, string contactPhoneNumberToCreate)
         {
-            if (contacToCreate != null)
+            if (DoesContactNameExist(contactNameToCreate) && DoesContactPhoneNumberExist(contactPhoneNumberToCreate) &&
+                DoesStringContainOnlyDigits(contactPhoneNumberToCreate))
             {
-                if (DoesStringContainOnlyDigits(contacToCreate.contactPhoneNumber))
-                {
-                    if (!string.IsNullOrWhiteSpace(contacToCreate.contactName) && !string.IsNullOrWhiteSpace(contacToCreate.contactPhoneNumber))
-                    {
-                        SerializeContact(contacToCreate);
-                        Console.WriteLine("'contacToCreate' was successfully created");
-                    }
-                    else
-                    {
-                        Console.WriteLine("'contactName' or 'contactPhoneNumber' equals null or white space");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("'contactPhoneNumber' does not contain only digits");
-                }
-            }
-            else
-            {
-                Console.WriteLine("'contacToCreate' equals null");
+                WriteContact(true, contactNameToCreate, contactPhoneNumberToCreate);
+
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("The contact was successfully created");
             }
         }
 
-        void EditContact(string contactData, Contact contactNewVersion)
+        void EditContact(string contactData, string newContactName, string newContactPhoneNumber)
         {
-            if (contactNewVersion != null && !string.IsNullOrWhiteSpace(contactData))
+            string[] currentContactNames = ReadContactNames(), currentContactPhoneNumbers = ReadContactPhoneNumbers();
+
+            if (DoesContactDataExist(contactData) && DoesContactNameExist(newContactName) && DoesContactPhoneNumberExist(newContactPhoneNumber) &&
+                DoesStringContainOnlyDigits(newContactPhoneNumber))
             {
-                if (!string.IsNullOrWhiteSpace(contactNewVersion.contactName) && !string.IsNullOrWhiteSpace(contactNewVersion.contactPhoneNumber))
+                bool isItFirstIteration = true, isContactFound = false;
+
+                for (int i = 0; i < currentContactNames.Length; i++)
                 {
-                    if (DoesStringContainOnlyDigits(contactNewVersion.contactPhoneNumber))
+                    if (currentContactNames[i] == contactData || currentContactPhoneNumbers[i] == contactData)
                     {
-                        List<Contact> currentContacts = DeserialzeContacts();
+                        currentContactNames[i] = newContactName;
+                        currentContactPhoneNumbers[i] = newContactPhoneNumber;
 
-                        if (currentContacts != null)
-                        {
-                            int editedContactCounter = 0;
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine("\nA contact was successfully edited. A new version of the contact: ");
+                        Console.WriteLine(currentContactNames[i]);
+                        Console.WriteLine(currentContactPhoneNumbers[i]);
 
-                            foreach (Contact currentContact in currentContacts)
-                            {
-                                if (currentContact.contactName == contactData || currentContact.contactPhoneNumber == contactData)
-                                {
-                                    editedContactCounter++;
-
-                                    currentContact.contactName = contactNewVersion.contactName;
-                                    currentContact.contactPhoneNumber = contactNewVersion.contactPhoneNumber;
-
-                                    Console.WriteLine("'curentContact' was successfully edited:");
-                                    Console.WriteLine(contactNewVersion.contactName);
-                                    Console.WriteLine(contactNewVersion.contactPhoneNumber + "\n");
-                                }
-                            }
-
-                            if (editedContactCounter > 0)
-                            {
-                                SerializeContacts(currentContacts);
-                                Console.WriteLine("'curentContacts' was successfully serialized");
-                            }
-                            else
-                            {
-                                Console.WriteLine("No contacts were not found with this 'contactData'");
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("'curentContacts' equals null");
-                        }
+                        isContactFound = true;
                     }
-                    else
+
+                    if (isItFirstIteration)
                     {
-                        Console.WriteLine("'contactPhoneNumber' does not contain only digits");
+                        WriteContact(false, currentContactNames[i], currentContactPhoneNumbers[i]);
+                        isItFirstIteration = false;
+
+                        continue;
                     }
-                    
+
+                    WriteContact(true, currentContactNames[i], currentContactPhoneNumbers[i]);
                 }
-                else
+
+                if (!isContactFound)
                 {
-                    Console.WriteLine("'contactName' or 'contactPhoneNumber' equals null or white space");
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("No contacts have been found with this contact data: " + contactData);
                 }
-            }
-            else
-            {
-                Console.WriteLine("'contactNewVersion' equals null or 'contactData' equlas null or white space");
             }
         }
 
         void RemoveContact(string contactData)
         {
-            if (!string.IsNullOrWhiteSpace(contactData))
+            string[] currentContactNames = ReadContactNames(), currentContactPhoneNumbers = ReadContactPhoneNumbers();
+
+            if (DoesContactDataExist(contactData) && AreCurrentContactsCorrect(currentContactNames, currentContactPhoneNumbers))
             {
-                List<Contact> curentContacts = DeserialzeContacts();
+                bool isContactFound = false;
 
-                if (curentContacts != null)
+                for (int i = 0; i < currentContactNames.Length; i++)
                 {
-                    List<Contact> editedContacts = new List<Contact>(curentContacts);
-
-                    foreach (Contact curentContact in curentContacts)
+                    if (currentContactNames[i] != contactData && currentContactPhoneNumbers[i] != contactData)
                     {
-                        if (curentContact.contactName == contactData || curentContact.contactPhoneNumber == contactData)
-                        {
-                            editedContacts.Remove(curentContact);
-
-                            Console.WriteLine("'curentContact' was successfully removed:");
-                            Console.WriteLine(curentContact.contactName);
-                            Console.WriteLine(curentContact.contactPhoneNumber + "\n");
-                        }
+                        WriteContact(false, currentContactNames[i], currentContactPhoneNumbers[i]);
                     }
+                    else
+                    {
+                        isContactFound = true;
 
-                    SerializeContacts(editedContacts);
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine("\nA contact was successfully removed: ");
+                        Console.WriteLine(currentContactNames[i]);
+                        Console.WriteLine(currentContactPhoneNumbers[i]);
+                    }
                 }
-                else
+
+                if (!isContactFound)
                 {
-                    Console.WriteLine("'curentContacts' equals null");
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("No contacts have been found with this contact data: " + contactData);
                 }
-            }
-            else
-            {
-                Console.WriteLine("'contactData' equals null or white space");
             }
         }
 
-        void ViewContact()
+        void ViewContactList()
         {
-            List<Contact> curentContacts = DeserialzeContacts();
+            string[] currentContactNames = ReadContactNames(), currentContactPhoneNumbers = ReadContactPhoneNumbers();
 
-            if (curentContacts != null)
+            if (AreCurrentContactsCorrect(currentContactNames, currentContactPhoneNumbers))
             {
-                Console.WriteLine("\nCONTACT LIST \n");
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine("\nCONTACT LIST");
 
-                foreach (Contact curentContact in curentContacts)
+                for (int i = 0; i < currentContactNames.Length; i++)
                 {
-                    Console.WriteLine(curentContact.contactName);
-                    Console.WriteLine(curentContact.contactPhoneNumber + "\n");
+                    Console.WriteLine("\n" + currentContactNames[i]);
+                    Console.WriteLine(currentContactPhoneNumbers[i]);
                 }
-            }
-            else
-            {
-                Console.WriteLine("'contactNewVersion' equals null");
             }
         }
 
         bool DoesStringContainOnlyDigits(string stringToCheck)
         {
+            const int ASCII_DEC_CODE_ZERO_CHAR = 48;
+            const int ASCII_DEC_CODE_NINE_CHAR = 57;
+
             foreach (char charToCheck in stringToCheck)
             {
-                if (charToCheck < 48 || charToCheck > 57)
+                if (charToCheck < ASCII_DEC_CODE_ZERO_CHAR || charToCheck > ASCII_DEC_CODE_NINE_CHAR)
                 {
                     return false;
                 }
@@ -302,22 +247,63 @@ namespace PhoneBook
 
             return true;
         }
-    }
 
-
-    [DataContract]
-    class Contact
-    {
-        [DataMember]
-        internal string contactName;
-
-        [DataMember]
-        internal string contactPhoneNumber;
-
-        internal Contact(string contactName, string contactPhoneNumber)
+        bool DoesContactNameExist(string contactName)
         {
-            this.contactName = contactName;
-            this.contactPhoneNumber = contactPhoneNumber;
+            if (string.IsNullOrWhiteSpace(contactName))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("There is no contact name");
+
+                return false;
+            }
+
+            return true;
+        }
+
+        bool DoesContactPhoneNumberExist(string contactPhoneNumber)
+        {
+            if (string.IsNullOrWhiteSpace(contactPhoneNumber))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("There is no contact phone number");
+
+                return false;
+            }
+
+            return true;
+        }
+
+        bool DoesContactDataExist(string contactData)
+        {
+            if (string.IsNullOrWhiteSpace(contactData))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("There is no contact data to find a contact");
+
+                return false;
+            }
+
+            return true;
+        }
+
+        bool AreCurrentContactsCorrect(string[] currentContactNames, string[] currentContactPhoneNumbers)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+
+            if (string.IsNullOrEmpty(currentContactNames[0]) || string.IsNullOrEmpty(currentContactPhoneNumbers[0]))
+            {
+                Console.WriteLine("There is no contacts in the phone book");
+                return false;
+            }
+
+            if (currentContactNames.Length != currentContactPhoneNumbers.Length)
+            {
+                Console.WriteLine("Contact names and phone numbers do not correspondent each other");
+                return false;
+            }
+
+            return true;
         }
     }
 }
