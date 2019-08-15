@@ -5,7 +5,8 @@ namespace PhoneBook
 {
     class Program
     {
-        string contactNamesFile = "ContactNames.txt", contactPhoneNumbersFile = "ContactPhoneNumbers.txt";
+        string contactNamesFile = "ContactNames.txt";
+        string contactPhoneNumbersFile = "ContactPhoneNumbers.txt";
 
         static void Main(string[] args)
         {
@@ -24,11 +25,11 @@ namespace PhoneBook
             {
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.WriteLine("\n");
-                Console.WriteLine("Press 'c' to create a new contact");
-                Console.WriteLine("Press 'e' to edit an existing contact");
-                Console.WriteLine("Press 'r' to remove a contact");
-                Console.WriteLine("Press 'v' to view all your contacts");
-                Console.WriteLine("Press 'q' to quit the program \n");
+                Console.WriteLine("Press '{0}' to create a new contact", CONTACT_CREATING);
+                Console.WriteLine("Press '{0}' to edit an existing contact", CONTACT_EDITING);
+                Console.WriteLine("Press '{0}' to remove a contact", CONTACT_REMOVING);
+                Console.WriteLine("Press '{0}' to view all your contacts", CONTACT_VIEWING);
+                Console.WriteLine("Press '{0}' to quit the program \n", PROGRAM_EXITING);
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.Write("Input a command: ");
 
@@ -39,7 +40,8 @@ namespace PhoneBook
                 {
                     case CONTACT_CREATING:
                     {
-                        string contactNameToCreate, contactPhoneNumberToCreate;
+                        string contactNameToCreate;
+                        string contactPhoneNumberToCreate;
 
                         Console.Write("Input a contact name: ");
                         contactNameToCreate = Console.ReadLine();
@@ -48,12 +50,14 @@ namespace PhoneBook
                         contactPhoneNumberToCreate = Console.ReadLine();
                         Console.WriteLine();
 
-                        program.CreateContact(contactNameToCreate, contactPhoneNumberToCreate);
+                        program.CreateContact(new Contact(contactNameToCreate, contactPhoneNumberToCreate));
                         break;
                     }
                     case CONTACT_EDITING:
                     {
-                        string contactData, newContactName, newContactPhoneNumber;
+                        string contactData;
+                        string newContactName;
+                        string newContactPhoneNumber;
 
                         Console.Write("Input any contact data to find a contact: ");
                         contactData = Console.ReadLine();
@@ -65,7 +69,7 @@ namespace PhoneBook
                         newContactPhoneNumber = Console.ReadLine();
                         Console.WriteLine();
 
-                        program.EditContact(contactData, newContactName, newContactPhoneNumber);
+                        program.EditContact(contactData, new Contact(newContactName, newContactPhoneNumber));
                         break;
                     }
                     case CONTACT_REMOVING:
@@ -92,16 +96,16 @@ namespace PhoneBook
             }
         }
 
-        void WriteContact(bool appendContact, string contactName, string contactPhoneNumber)
+        void WriteContact(bool appendContact, Contact contact)
         {
             using (StreamWriter contactNameStreamWriter = new StreamWriter(contactNamesFile, appendContact))
             {
-                contactNameStreamWriter.Write(contactName + ' ');
+                contactNameStreamWriter.Write(contact.name + ' ');
             }
 
             using (StreamWriter contactPhoneNumberStreamWriter = new StreamWriter(contactPhoneNumbersFile, appendContact))
             {
-                contactPhoneNumberStreamWriter.Write(contactPhoneNumber + ' ');
+                contactPhoneNumberStreamWriter.Write(contact.phoneNumber + ' ');
             }
         }
 
@@ -118,7 +122,8 @@ namespace PhoneBook
 
         string[] ReadContactPhoneNumbers()
         {
-            using (StreamReader contactPhoneNumberStreamReader = new StreamReader(new FileStream(contactPhoneNumbersFile, FileMode.OpenOrCreate)))
+            using (StreamReader contactPhoneNumberStreamReader = new StreamReader(
+                new FileStream(contactPhoneNumbersFile, FileMode.OpenOrCreate)))
             {
                 string currentContactPhoneNumbers = contactPhoneNumberStreamReader.ReadToEnd().Trim();
                 string[] contactNames = currentContactPhoneNumbers.Split();
@@ -127,33 +132,35 @@ namespace PhoneBook
             }
         }
 
-        void CreateContact(string contactNameToCreate, string contactPhoneNumberToCreate)
+        void CreateContact(Contact contacToCreate)
         {
-            if (DoesContactNameExist(contactNameToCreate) && DoesContactPhoneNumberExist(contactPhoneNumberToCreate) &&
-                DoesStringContainOnlyDigits(contactPhoneNumberToCreate))
+            if (DoesContactNameExist(contacToCreate.name) && DoesContactPhoneNumberExist(contacToCreate.phoneNumber) &&
+                DoesStringContainOnlyDigits(contacToCreate.phoneNumber))
             {
-                WriteContact(true, contactNameToCreate, contactPhoneNumberToCreate);
+                WriteContact(true, contacToCreate);
 
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("The contact was successfully created");
             }
         }
 
-        void EditContact(string contactData, string newContactName, string newContactPhoneNumber)
+        void EditContact(string contactData, Contact newContact)
         {
-            string[] currentContactNames = ReadContactNames(), currentContactPhoneNumbers = ReadContactPhoneNumbers();
+            string[] currentContactNames = ReadContactNames();
+            string[] currentContactPhoneNumbers = ReadContactPhoneNumbers();
 
-            if (DoesContactDataExist(contactData) && DoesContactNameExist(newContactName) && DoesContactPhoneNumberExist(newContactPhoneNumber) &&
-                DoesStringContainOnlyDigits(newContactPhoneNumber))
+            if (DoesContactDataExist(contactData) && DoesContactNameExist(newContact.name) &&
+                DoesContactPhoneNumberExist(newContact.phoneNumber) && DoesStringContainOnlyDigits(newContact.phoneNumber))
             {
-                bool isItFirstIteration = true, isContactFound = false;
+                bool isItFirstIteration = true;
+                bool isContactFound = false;
 
                 for (int i = 0; i < currentContactNames.Length; i++)
                 {
                     if (currentContactNames[i] == contactData || currentContactPhoneNumbers[i] == contactData)
                     {
-                        currentContactNames[i] = newContactName;
-                        currentContactPhoneNumbers[i] = newContactPhoneNumber;
+                        currentContactNames[i] = newContact.name;
+                        currentContactPhoneNumbers[i] = newContact.phoneNumber;
 
                         Console.ForegroundColor = ConsoleColor.Green;
                         Console.WriteLine("\nA contact was successfully edited. A new version of the contact: ");
@@ -165,13 +172,13 @@ namespace PhoneBook
 
                     if (isItFirstIteration)
                     {
-                        WriteContact(false, currentContactNames[i], currentContactPhoneNumbers[i]);
+                        WriteContact(false, new Contact(currentContactNames[i], currentContactPhoneNumbers[i]));
                         isItFirstIteration = false;
 
                         continue;
                     }
 
-                    WriteContact(true, currentContactNames[i], currentContactPhoneNumbers[i]);
+                    WriteContact(true, new Contact(currentContactNames[i], currentContactPhoneNumbers[i]));
                 }
 
                 if (!isContactFound)
@@ -184,7 +191,8 @@ namespace PhoneBook
 
         void RemoveContact(string contactData)
         {
-            string[] currentContactNames = ReadContactNames(), currentContactPhoneNumbers = ReadContactPhoneNumbers();
+            string[] currentContactNames = ReadContactNames();
+            string[] currentContactPhoneNumbers = ReadContactPhoneNumbers();
 
             if (DoesContactDataExist(contactData) && AreCurrentContactsCorrect(currentContactNames, currentContactPhoneNumbers))
             {
@@ -234,12 +242,12 @@ namespace PhoneBook
 
         bool DoesStringContainOnlyDigits(string stringToCheck)
         {
-            const int ASCII_DEC_CODE_ZERO_CHAR = 48;
-            const int ASCII_DEC_CODE_NINE_CHAR = 57;
+            const char ZERO_CHAR = '0';
+            const char NINE_CHAR = '9';
 
             foreach (char charToCheck in stringToCheck)
             {
-                if (charToCheck < ASCII_DEC_CODE_ZERO_CHAR || charToCheck > ASCII_DEC_CODE_NINE_CHAR)
+                if (charToCheck < ZERO_CHAR || charToCheck > NINE_CHAR)
                 {
                     return false;
                 }
@@ -305,5 +313,19 @@ namespace PhoneBook
 
             return true;
         }
+    }
+
+    class Contact
+    {
+        internal string name;
+        internal string phoneNumber;
+
+        internal Contact(string name, string phoneNumber)
+        {
+            this.name = name;
+            this.phoneNumber = phoneNumber;
+        }
+
+        
     }
 }
