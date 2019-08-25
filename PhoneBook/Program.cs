@@ -7,7 +7,7 @@ namespace PhoneBook
     {
         string contactNamesFile = "ContactNames.txt";
         string contactPhoneNumbersFile = "ContactPhoneNumbers.txt";
-
+        
         static void Main(string[] args)
         {
             string phoneBookCommand;
@@ -23,6 +23,10 @@ namespace PhoneBook
 
             while (true)
             {
+                string contactName;
+                string contactPhoneNumber;
+                string contactData;
+
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.WriteLine("\n");
                 Console.WriteLine("Press '{0}' to create a new contact", CONTACT_CREATING);
@@ -40,42 +44,33 @@ namespace PhoneBook
                 {
                     case CONTACT_CREATING:
                     {
-                        string contactNameToCreate;
-                        string contactPhoneNumberToCreate;
-
                         Console.Write("Input a contact name: ");
-                        contactNameToCreate = Console.ReadLine();
+                        contactName = Console.ReadLine();
 
                         Console.Write("Input a contact phone number: ");
-                        contactPhoneNumberToCreate = Console.ReadLine();
+                        contactPhoneNumber = Console.ReadLine();
                         Console.WriteLine();
 
-                        program.CreateContact(new Contact(contactNameToCreate, contactPhoneNumberToCreate));
+                        program.CreateContact(new Contact(contactName, contactPhoneNumber));
                         break;
                     }
                     case CONTACT_EDITING:
                     {
-                        string contactData;
-                        string newContactName;
-                        string newContactPhoneNumber;
-
                         Console.Write("Input any contact data to find a contact: ");
                         contactData = Console.ReadLine();
 
                         Console.Write("Input a new contact name: ");
-                        newContactName = Console.ReadLine();
+                        contactName = Console.ReadLine();
 
                         Console.Write("Input a new contact phone number: ");
-                        newContactPhoneNumber = Console.ReadLine();
+                        contactPhoneNumber = Console.ReadLine();
                         Console.WriteLine();
 
-                        program.EditContact(contactData, new Contact(newContactName, newContactPhoneNumber));
+                        program.EditContact(contactData, new Contact(contactName, contactPhoneNumber));
                         break;
                     }
                     case CONTACT_REMOVING:
                     {
-                        string contactData;
-
                         Console.Write("Input any contact data to find a contact: ");
                         contactData = Console.ReadLine();
                         Console.WriteLine();
@@ -91,6 +86,13 @@ namespace PhoneBook
                     case PROGRAM_EXITING:
                     {
                         return;
+                    }
+                    default:
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("The incorrect command");
+
+                        break;
                     }
                 }
             }
@@ -202,11 +204,16 @@ namespace PhoneBook
                 {
                     if (currentContactNames[i] != contactData && currentContactPhoneNumbers[i] != contactData)
                     {
-                        WriteContact(false, currentContactNames[i], currentContactPhoneNumbers[i]);
+                        WriteContact(false, new Contact(currentContactNames[i], currentContactPhoneNumbers[i]));
                     }
                     else
                     {
                         isContactFound = true;
+
+                        if (currentContactNames.Length == 1)
+                        {
+                            WriteContact(false, new Contact(null, null));
+                        }
 
                         Console.ForegroundColor = ConsoleColor.Green;
                         Console.WriteLine("\nA contact was successfully removed: ");
@@ -242,12 +249,9 @@ namespace PhoneBook
 
         bool DoesStringContainOnlyDigits(string stringToCheck)
         {
-            const char ZERO_CHAR = '0';
-            const char NINE_CHAR = '9';
-
             foreach (char charToCheck in stringToCheck)
             {
-                if (charToCheck < ZERO_CHAR || charToCheck > NINE_CHAR)
+                if (charToCheck < '0' || charToCheck > '9')
                 {
                     return false;
                 }
@@ -325,7 +329,5 @@ namespace PhoneBook
             this.name = name;
             this.phoneNumber = phoneNumber;
         }
-
-        
     }
 }
