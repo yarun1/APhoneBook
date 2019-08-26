@@ -1,48 +1,57 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 
 namespace PhoneBook
 {
     class Program
     {
-        string contactNamesFile = "ContactNames.txt";
-        string contactPhoneNumbersFile = "ContactPhoneNumbers.txt";
+        string contactsFile = "Contacts.txt";
         
         static void Main(string[] args)
         {
-            string phoneBookCommand;
             Program program = new Program();
 
-            const string CONTACT_CREATING = "c";
-            const string CONTACT_EDITING = "e";
-            const string CONTACT_REMOVING = "r";
-            const string CONTACT_VIEWING = "v";
-            const string PROGRAM_EXITING = "q";
+            string phoneBookCommand;
+            string contactName;
+            string contactPhoneNumber;
+            string contactData;
+
+            const string CONTACT_GETTING_COMMAND = "g";
+            const string CONTACT_LIST_GETTING_COMMAND = "gl";
+            const string CONTACT_CREATION_COMMAND = "c";
+            const string CONTACT_UPDATE_COMMAND = "u";
+            const string CONTACT_REMOVING_COMMAND = "r";
+            const string CONTACT_LIST_REMOVING_COMMAND = "rl";
+            const string PROGRAM_EXIT_COMMAND = "e";
 
             Console.WriteLine("WELCOME TO YOUR PHONE BOOK");
 
             while (true)
             {
-                string contactName;
-                string contactPhoneNumber;
-                string contactData;
-
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine("\n");
-                Console.WriteLine("Press '{0}' to create a new contact", CONTACT_CREATING);
-                Console.WriteLine("Press '{0}' to edit an existing contact", CONTACT_EDITING);
-                Console.WriteLine("Press '{0}' to remove a contact", CONTACT_REMOVING);
-                Console.WriteLine("Press '{0}' to view all your contacts", CONTACT_VIEWING);
-                Console.WriteLine("Press '{0}' to quit the program \n", PROGRAM_EXITING);
-                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"\n\nPress '{CONTACT_GETTING_COMMAND}' to get a contact from the contact list");
+                Console.WriteLine($"Press '{CONTACT_LIST_GETTING_COMMAND}' to get the contact list");
+                Console.WriteLine($"Press '{CONTACT_CREATION_COMMAND}' to create a new contact");
+                Console.WriteLine($"Press '{CONTACT_UPDATE_COMMAND}' to update a contact");
+                Console.WriteLine($"Press '{CONTACT_REMOVING_COMMAND}' to remove a contact");
+                Console.WriteLine($"Press '{CONTACT_LIST_REMOVING_COMMAND}' to remove the contact list");
+                Console.WriteLine($"Press '{PROGRAM_EXIT_COMMAND}' to exit the program \n\n");
                 Console.Write("Input a command: ");
 
                 phoneBookCommand = Console.ReadLine();
-                Console.WriteLine();
 
                 switch (phoneBookCommand)
                 {
-                    case CONTACT_CREATING:
+                    case CONTACT_GETTING_COMMAND:
+                    {
+                        break;
+                    }
+                    case CONTACT_LIST_GETTING_COMMAND:
+                    {
+                        program.GetContactList();
+                        break;
+                    }
+                    case CONTACT_CREATION_COMMAND:
                     {
                         Console.Write("Input a contact name: ");
                         contactName = Console.ReadLine();
@@ -54,7 +63,7 @@ namespace PhoneBook
                         program.CreateContact(new Contact(contactName, contactPhoneNumber));
                         break;
                     }
-                    case CONTACT_EDITING:
+                    case CONTACT_UPDATE_COMMAND:
                     {
                         Console.Write("Input any contact data to find a contact: ");
                         contactData = Console.ReadLine();
@@ -66,10 +75,10 @@ namespace PhoneBook
                         contactPhoneNumber = Console.ReadLine();
                         Console.WriteLine();
 
-                        program.EditContact(contactData, new Contact(contactName, contactPhoneNumber));
+                        program.UpdateContact(contactData, new Contact(contactName, contactPhoneNumber));
                         break;
                     }
-                    case CONTACT_REMOVING:
+                    case CONTACT_REMOVING_COMMAND:
                     {
                         Console.Write("Input any contact data to find a contact: ");
                         contactData = Console.ReadLine();
@@ -78,20 +87,17 @@ namespace PhoneBook
                         program.RemoveContact(contactData);
                         break;
                     }
-                    case CONTACT_VIEWING:
+                    case CONTACT_LIST_REMOVING_COMMAND:
                     {
-                        program.ViewContactList();
                         break;
                     }
-                    case PROGRAM_EXITING:
+                    case PROGRAM_EXIT_COMMAND:
                     {
                         return;
                     }
                     default:
                     {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("The incorrect command");
-
+                        Console.WriteLine("\nThe incorrect command");
                         break;
                     }
                 }
@@ -100,150 +106,138 @@ namespace PhoneBook
 
         void WriteContact(bool appendContact, Contact contact)
         {
-            using (StreamWriter contactNameStreamWriter = new StreamWriter(contactNamesFile, appendContact))
+            using (StreamWriter contactStreamWriter = new StreamWriter(contactsFile, appendContact))
             {
-                contactNameStreamWriter.Write(contact.name + ' ');
-            }
-
-            using (StreamWriter contactPhoneNumberStreamWriter = new StreamWriter(contactPhoneNumbersFile, appendContact))
-            {
-                contactPhoneNumberStreamWriter.Write(contact.phoneNumber + ' ');
+                contactStreamWriter.Write(contact.name + ' ');
+                contactStreamWriter.Write(contact.phoneNumber + "  ");
             }
         }
 
-        string[] ReadContactNames()
+        Contact[] ReadContactList()
         {
-            using (StreamReader contactNameStreamReader = new StreamReader(new FileStream(contactNamesFile, FileMode.OpenOrCreate)))
+            using (StreamReader contactStreamReader = new StreamReader(new FileStream(contactsFile, FileMode.OpenOrCreate)))
             {
-                string currentContactNames = contactNameStreamReader.ReadToEnd().Trim();
-                string[] contactNames = currentContactNames.Split();
+                string[] currentContacts = contactStreamReader.ReadToEnd().Split(new[] { "  " }, StringSplitOptions.RemoveEmptyEntries);
+                Contact[] contacts = new Contact[currentContacts.Length];
+                
+                for (int i = 0; i < contacts.Length; i++)
+                {
+                    string[] contact = currentContacts[i].Split();
+                    contacts[i] = new Contact(contact[0], contact[1]);
+                }
 
-                return contactNames;
+                return contacts;
             }
         }
 
-        string[] ReadContactPhoneNumbers()
+        List<Contact> SearchContacts(string contactData)
         {
-            using (StreamReader contactPhoneNumberStreamReader = new StreamReader(
-                new FileStream(contactPhoneNumbersFile, FileMode.OpenOrCreate)))
-            {
-                string currentContactPhoneNumbers = contactPhoneNumberStreamReader.ReadToEnd().Trim();
-                string[] contactNames = currentContactPhoneNumbers.Split();
+            bool isContactFound = false;
 
-                return contactNames;
+            Contact[] currentContacts = ReadContactList();
+            List<Contact> searchedContacts = new List<Contact>();
+
+            foreach (Contact currentContact in currentContacts)
+            {
+                if (currentContact.name == contactData || currentContact.phoneNumber == contactData)
+                {
+                    searchedContacts.Add(currentContact);
+                    isContactFound = true;
+                }
             }
+
+            if (!isContactFound)
+            {
+                Console.WriteLine("\nThe incorrect contact data");
+            }
+
+            return searchedContacts;
         }
 
         void CreateContact(Contact contacToCreate)
         {
-            if (DoesContactNameExist(contacToCreate.name) && DoesContactPhoneNumberExist(contacToCreate.phoneNumber) &&
-                DoesStringContainOnlyDigits(contacToCreate.phoneNumber))
+            if (DoesContactExist(contacToCreate) && DoesStringContainOnlyDigits(contacToCreate.phoneNumber))
             {
                 WriteContact(true, contacToCreate);
-
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("The contact was successfully created");
+                Console.WriteLine("Succeeded");
             }
         }
 
-        void EditContact(string contactData, Contact newContact)
+        void UpdateContact(string contactData, Contact newContact)
         {
-            string[] currentContactNames = ReadContactNames();
-            string[] currentContactPhoneNumbers = ReadContactPhoneNumbers();
-
-            if (DoesContactDataExist(contactData) && DoesContactNameExist(newContact.name) &&
-                DoesContactPhoneNumberExist(newContact.phoneNumber) && DoesStringContainOnlyDigits(newContact.phoneNumber))
+            if (DoContactDataExist(contactData) && DoesContactExist(newContact) && DoesStringContainOnlyDigits(newContact.phoneNumber))
             {
-                bool isItFirstIteration = true;
-                bool isContactFound = false;
+                List<Contact> currentContacts = new List<Contact>(ReadContactList());
 
-                for (int i = 0; i < currentContactNames.Length; i++)
+                if (currentContacts.Count != 0)
                 {
-                    if (currentContactNames[i] == contactData || currentContactPhoneNumbers[i] == contactData)
+                    List<Contact> searchedContacts = SearchContacts(contactData);
+
+                    for (int i = 0; i < searchedContacts.Count; i++)
                     {
-                        currentContactNames[i] = newContact.name;
-                        currentContactPhoneNumbers[i] = newContact.phoneNumber;
+                        currentContacts.RemoveAt(searchedContacts.IndexOf(searchedContacts[i]));
+                        currentContacts.Add(newContact);
 
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("\nA contact was successfully edited. A new version of the contact: ");
-                        Console.WriteLine(currentContactNames[i]);
-                        Console.WriteLine(currentContactPhoneNumbers[i]);
-
-                        isContactFound = true;
+                        Console.WriteLine("\nSucceeded");
+                        Console.WriteLine($"{searchedContacts[i].name} --> {newContact.name}");
+                        Console.WriteLine($"{searchedContacts[i].phoneNumber} --> {newContact.phoneNumber}");
                     }
 
-                    if (isItFirstIteration)
+                    WriteContact(false, currentContacts[0]);
+
+                    for (int i = 1; i < currentContacts.Count; i++)
                     {
-                        WriteContact(false, new Contact(currentContactNames[i], currentContactPhoneNumbers[i]));
-                        isItFirstIteration = false;
-
-                        continue;
+                        WriteContact(true, currentContacts[i]);
                     }
-
-                    WriteContact(true, new Contact(currentContactNames[i], currentContactPhoneNumbers[i]));
                 }
-
-                if (!isContactFound)
+                else
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("No contacts have been found with this contact data: " + contactData);
+                    Console.WriteLine("There is no contacts in the phone book");
                 }
             }
         }
 
         void RemoveContact(string contactData)
         {
-            string[] currentContactNames = ReadContactNames();
-            string[] currentContactPhoneNumbers = ReadContactPhoneNumbers();
-
-            if (DoesContactDataExist(contactData) && AreCurrentContactsCorrect(currentContactNames, currentContactPhoneNumbers))
+            if (DoContactDataExist(contactData))
             {
-                bool isContactFound = false;
+                List<Contact> currentContacts = new List<Contact>(ReadContactList());
 
-                for (int i = 0; i < currentContactNames.Length; i++)
+                if (currentContacts.Count != 0)
                 {
-                    if (currentContactNames[i] != contactData && currentContactPhoneNumbers[i] != contactData)
-                    {
-                        WriteContact(false, new Contact(currentContactNames[i], currentContactPhoneNumbers[i]));
-                    }
-                    else
-                    {
-                        isContactFound = true;
+                    List<Contact> searchedContacts = SearchContacts(contactData);
 
-                        if (currentContactNames.Length == 1)
-                        {
-                            WriteContact(false, new Contact(null, null));
-                        }
-
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("\nA contact was successfully removed: ");
-                        Console.WriteLine(currentContactNames[i]);
-                        Console.WriteLine(currentContactPhoneNumbers[i]);
+                    for (int i = 0; i < searchedContacts.Count; i++)
+                    {
+                        currentContacts.RemoveAt(searchedContacts.IndexOf(searchedContacts[i]));
                     }
+
+                    WriteContact(false, currentContacts[0]);
+
+                    for (int i = 1; i < currentContacts.Count; i++)
+                    {
+                        WriteContact(true, currentContacts[i]);
+                    }
+
+                    Console.WriteLine("Succeeded");
                 }
-
-                if (!isContactFound)
+                else
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("No contacts have been found with this contact data: " + contactData);
+                    Console.WriteLine("There is no contacts in the phone book");
                 }
             }
         }
 
-        void ViewContactList()
+        void GetContactList()
         {
-            string[] currentContactNames = ReadContactNames(), currentContactPhoneNumbers = ReadContactPhoneNumbers();
+            Contact[] currentContacts = ReadContactList();
 
-            if (AreCurrentContactsCorrect(currentContactNames, currentContactPhoneNumbers))
+            Console.WriteLine("\n\nCONTACT LIST");
+
+            for (int i = 0; i < currentContacts.Length; i++)
             {
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine("\nCONTACT LIST");
-
-                for (int i = 0; i < currentContactNames.Length; i++)
-                {
-                    Console.WriteLine("\n" + currentContactNames[i]);
-                    Console.WriteLine(currentContactPhoneNumbers[i]);
-                }
+                Console.WriteLine("\n" + currentContacts[i].name);
+                Console.WriteLine(currentContacts[i].phoneNumber);
             }
         }
 
@@ -260,58 +254,27 @@ namespace PhoneBook
             return true;
         }
 
-        bool DoesContactNameExist(string contactName)
+        bool DoesContactExist(Contact contacToCheck)
         {
-            if (string.IsNullOrWhiteSpace(contactName))
+            if (string.IsNullOrWhiteSpace(contacToCheck.name))
             {
-                Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("There is no contact name");
-
                 return false;
             }
-
-            return true;
-        }
-
-        bool DoesContactPhoneNumberExist(string contactPhoneNumber)
-        {
-            if (string.IsNullOrWhiteSpace(contactPhoneNumber))
+            else if (string.IsNullOrWhiteSpace(contacToCheck.phoneNumber))
             {
-                Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("There is no contact phone number");
-
                 return false;
             }
 
             return true;
         }
-
-        bool DoesContactDataExist(string contactData)
+       
+        bool DoContactDataExist(string contactDataToCheck)
         {
-            if (string.IsNullOrWhiteSpace(contactData))
+            if (string.IsNullOrWhiteSpace(contactDataToCheck))
             {
-                Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("There is no contact data to find a contact");
-
-                return false;
-            }
-
-            return true;
-        }
-
-        bool AreCurrentContactsCorrect(string[] currentContactNames, string[] currentContactPhoneNumbers)
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-
-            if (string.IsNullOrEmpty(currentContactNames[0]) || string.IsNullOrEmpty(currentContactPhoneNumbers[0]))
-            {
-                Console.WriteLine("There is no contacts in the phone book");
-                return false;
-            }
-
-            if (currentContactNames.Length != currentContactPhoneNumbers.Length)
-            {
-                Console.WriteLine("Contact names and phone numbers do not correspondent each other");
                 return false;
             }
 
@@ -321,10 +284,10 @@ namespace PhoneBook
 
     class Contact
     {
-        internal string name;
-        internal string phoneNumber;
+        public string name;
+        public string phoneNumber;
 
-        internal Contact(string name, string phoneNumber)
+        public Contact(string name, string phoneNumber)
         {
             this.name = name;
             this.phoneNumber = phoneNumber;
