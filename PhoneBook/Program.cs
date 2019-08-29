@@ -6,8 +6,9 @@ namespace PhoneBook
 {
     class Program
     {
-        string contactsFile = "Contacts.txt";
-        
+        string contactsFile = "Contacts.csv";
+        char contactDataSeparator = ',';
+
         static void Main(string[] args)
         {
             Program program = new Program();
@@ -111,73 +112,76 @@ namespace PhoneBook
             }
         }
 
-        void WriteContact(bool appendContact, Contact contact)
+        void WriteContact(bool appendContact, Contact contactToWrite)
         {
             using (StreamWriter contactStreamWriter = new StreamWriter(contactsFile, appendContact))
             {
-                contactStreamWriter.Write(contact.name + ' ');
-                contactStreamWriter.Write(contact.phoneNumber + "  ");
-            }
+                if (contactToWrite != null)
+                {
+                    contactStreamWriter.WriteLine(contactToWrite.name + contactDataSeparator + contactToWrite.phoneNumber);
+                }
+                else
+                {
+                    contactStreamWriter.Write(contactToWrite);
+                }
+            }   
         }
 
-        Contact[] ReadContactList()
+        List<Contact> ReadContactList()
         {
             using (StreamReader contactStreamReader = new StreamReader(new FileStream(contactsFile, FileMode.OpenOrCreate)))
             {
-                string currentContacts = contactStreamReader.ReadToEnd().Trim();
-                string[] splitCurrentContacts = currentContacts.Split(new[] { "  " }, StringSplitOptions.RemoveEmptyEntries);
+                string currentContacts = contactStreamReader.ReadToEnd();
+                string[] splitCurrentContacts = currentContacts.Split("\n\r".ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
 
-                Contact[] contacts = new Contact[splitCurrentContacts.Length];
+                List<Contact> contactsToRead = new List<Contact>();
                 
-                for (int i = 0; i < contacts.Length; i++)
+                foreach (string splitCurrentContact in splitCurrentContacts)
                 {
-                    string[] contact = splitCurrentContacts[i].Split();
-                    contacts[i] = new Contact(contact[0], contact[1]);
+                    string[] currentContact = splitCurrentContact.Split(contactDataSeparator);
+                    contactsToRead.Add(new Contact(currentContact[0], currentContact[1]));
                 }
 
-                return contacts;
+                return contactsToRead;
             }
         }
 
-        List<Contact> SearchContacts(string contactData)
+        Contact SearchContact(string contactDataToSearch)
         {
-            bool isContactFound = false;
-
-            Contact[] currentContacts = ReadContactList();
-            List<Contact> searchedContacts = new List<Contact>();
+            List<Contact> currentContacts = ReadContactList();
 
             foreach (Contact currentContact in currentContacts)
             {
-                if (currentContact.name == contactData || currentContact.phoneNumber == contactData)
+                if (currentContact.name == contactDataToSearch || currentContact.phoneNumber == contactDataToSearch)
                 {
-                    searchedContacts.Add(currentContact);
-                    isContactFound = true;
+                    return currentContact;
                 }
             }
 
-            if (!isContactFound)
-            {
-                Console.WriteLine("\nThe incorrect contact data");
-            }
-
-            return searchedContacts;
+            Console.WriteLine("\nThe incorrect contact data");
+            return null;
         }
 
         void GetContact(string contactData)
         {
-            PrintContacts(SearchContacts(contactData));
+            Contact searchedContact = SearchContact(contactData);
+
+            if (DoesContactExist(searchedContact))
+            {
+                PrintContacts(new List<Contact>() { searchedContact });
+            }
         }
 
         void GetContactList()
         {
-            PrintContacts(new List<Contact>(ReadContactList()));
+            PrintContacts(ReadContactList());
         }
 
-        void CreateContact(Contact contacToCreate)
+        void CreateContact(Contact contactToCreate)
         {
-            if (DoesContactExist(contacToCreate) && DoesStringContainOnlyDigits(contacToCreate.phoneNumber))
+            if (DoesContactExist(contactToCreate) && DoesPhoneNumberContainOnlyDigits(contactToCreate.phoneNumber))
             {
-                WriteContact(true, contacToCreate);
+                WriteContact(true, contactToCreate);
                 Console.WriteLine("\nSucceeded");
             }
         }
@@ -187,24 +191,31 @@ namespace PhoneBook
             List<Contact> currentContacts = new List<Contact>(ReadContactList());
 
             if (DoContactDataExist(contactData) && DoesContactExist(newContact) &&
-                DoesStringContainOnlyDigits(newContact.phoneNumber) && !IsContactListEmpty(currentContacts))
+                DoesPhoneNumberContainOnlyDigits(newContact.phoneNumber) && !IsContactListEmpty(currentContacts))
             {
-                List<Contact> searchedContacts = SearchContacts(contactData);
-
-                for (int i = 0; i < searchedContacts.Count; i++)
+                Contact searchedContact = SearchContact(contactData);
+                
+                for (int i = currentContacts.Count - 1; i >= 0; i--)
                 {
-                    currentContacts.RemoveAt(searchedContacts.IndexOf(searchedContacts[i]));
-                    currentContacts.Add(newContact);
+                    if (searchedContact.Equals(currentContacts[i]))
+                    {
+                        currentContacts.Remove(currentContacts[i]);
+                        currentContacts.Add(newContact);
 
-                    Console.WriteLine("\nSucceeded");
-                    Console.WriteLine($"{searchedContacts[i].name} --> {newContact.name}");
-                    Console.WriteLine($"{searchedContacts[i].phoneNumber} --> {newContact.phoneNumber}");
+                        Console.WriteLine("\nSucceeded");
+                        Console.WriteLine($"{searchedContact.name} --> {newContact.name}");
+                        Console.WriteLine($"{searchedContact.phoneNumber} --> {newContact.phoneNumber}");
+                    }
                 }
 
-                WriteContact(false, currentContacts[0]);
-
-                for (int i = 1; i < currentContacts.Count; i++)
+                for (int i = 0; i < currentContacts.Count; i++)
                 {
+                    if (i == 0)
+                    {
+                        WriteContact(false, currentContacts[i]);
+                        continue;
+                    }
+
                     WriteContact(true, currentContacts[i]);
                 }
             }
@@ -212,40 +223,47 @@ namespace PhoneBook
 
         void RemoveContact(string contactData)
         {
-            List<Contact> currentContacts = new List<Contact>(ReadContactList());
+            List<Contact> currentContacts = ReadContactList();
 
             if (DoContactDataExist(contactData) && !IsContactListEmpty(currentContacts))
             {
-                List<Contact> searchedContacts = SearchContacts(contactData);
+                bool isContactRemoved = false;
+                Contact searchedContact = SearchContact(contactData);
 
-                for (int i = 0; i < searchedContacts.Count; i++)
+                for (int i = currentContacts.Count - 1; i >= 0; i--)
                 {
-                    currentContacts.RemoveAt(searchedContacts.IndexOf(searchedContacts[i]));
+                    if (searchedContact.Equals(currentContacts[i]))
+                    {
+                        currentContacts.Remove(currentContacts[i]);
+                        isContactRemoved = true;
+                    }
                 }
 
-                WriteContact(false, currentContacts[0]);
-
-                for (int i = 1; i < currentContacts.Count; i++)
+                if (isContactRemoved)
                 {
-                    WriteContact(true, currentContacts[i]);
+                    Console.WriteLine("Succeeded");
                 }
 
-                Console.WriteLine("Succeeded");
+                WriteContactList(currentContacts);
             }
         }
 
         void RemoveContactList()
         {
-            WriteContact(false, new Contact(null, null));
-            Console.WriteLine("\nSucceeded");
+            if (!IsContactListEmpty(ReadContactList()))
+            {
+                WriteContact(false, null);
+                Console.WriteLine("\nSucceeded");
+            }
         }
 
-        bool DoesStringContainOnlyDigits(string stringToCheck)
+        bool DoesPhoneNumberContainOnlyDigits(string phoneNumberToCheck)
         {
-            foreach (char charToCheck in stringToCheck)
+            foreach (char phoneNumberDigitToCheck in phoneNumberToCheck)
             {
-                if (charToCheck < '0' || charToCheck > '9')
+                if (phoneNumberDigitToCheck < '0' || phoneNumberDigitToCheck > '9')
                 {
+                    Console.WriteLine("\nThe contact phone number does not contain only digits");
                     return false;
                 }
             }
@@ -253,14 +271,19 @@ namespace PhoneBook
             return true;
         }
 
-        bool DoesContactExist(Contact contacToCheck)
+        bool DoesContactExist(Contact contactToCheck)
         {
-            if (string.IsNullOrWhiteSpace(contacToCheck.name))
+            if (contactToCheck == null)
+            {
+                Console.WriteLine("\nThis contact does not exist");
+                return false;
+            }
+            else if (string.IsNullOrWhiteSpace(contactToCheck.name))
             {
                 Console.WriteLine("\nThere is no contact name");
                 return false;
             }
-            else if (string.IsNullOrWhiteSpace(contacToCheck.phoneNumber))
+            else if (string.IsNullOrWhiteSpace(contactToCheck.phoneNumber))
             {
                 Console.WriteLine("\nThere is no contact phone number");
                 return false;
@@ -280,9 +303,9 @@ namespace PhoneBook
             return true;
         }
 
-        bool IsContactListEmpty(List<Contact> lisToCheck)
+        bool IsContactListEmpty(List<Contact> contactListToCheck)
         {
-            if (lisToCheck.Count == 0)
+            if (contactListToCheck.Count == 0)
             {
                 Console.WriteLine("\nThere is no contacts in the phone book");
                 return true;
@@ -295,13 +318,33 @@ namespace PhoneBook
         {
             if (!IsContactListEmpty(contactsToPrint))
             {
-                Console.WriteLine("\n\nCONTACT LIST");
+                Console.WriteLine("\nCONTACT LIST");
 
                 foreach (Contact contactToPrint in contactsToPrint)
                 {
                     Console.WriteLine("\n" + contactToPrint.name);
                     Console.WriteLine(contactToPrint.phoneNumber);
                 }
+            }
+        }
+
+        void WriteContactList(List<Contact> contactsToWrite)
+        {
+            if (contactsToWrite.Count == 0)
+            {
+                RemoveContactList();
+                return;
+            }
+
+            for (int i = 0; i < contactsToWrite.Count; i++)
+            {
+                if (i == 0)
+                {
+                    WriteContact(false, contactsToWrite[i]);
+                    continue;
+                }
+
+                WriteContact(true, contactsToWrite[i]);
             }
         }
     }
@@ -315,6 +358,16 @@ namespace PhoneBook
         {
             this.name = name;
             this.phoneNumber = phoneNumber;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null || GetType() != obj.GetType())
+            {
+                return false;
+            }
+
+            return name == ((Contact)obj).name && phoneNumber == ((Contact)obj).phoneNumber;
         }
     }
 }
