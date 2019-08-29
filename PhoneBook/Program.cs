@@ -182,7 +182,7 @@ namespace PhoneBook
             if (DoesContactExist(contactToCreate) && DoesPhoneNumberContainOnlyDigits(contactToCreate.phoneNumber))
             {
                 WriteContact(true, contactToCreate);
-                Console.WriteLine("\nSucceeded");
+                Console.WriteLine("\nThis contact was successfully created");
             }
         }
 
@@ -202,7 +202,7 @@ namespace PhoneBook
                         currentContacts.Remove(currentContacts[i]);
                         currentContacts.Add(newContact);
 
-                        Console.WriteLine("\nSucceeded");
+                        Console.WriteLine("\nThis contact was successfully updated");
                         Console.WriteLine($"{searchedContact.name} --> {newContact.name}");
                         Console.WriteLine($"{searchedContact.phoneNumber} --> {newContact.phoneNumber}");
                     }
@@ -241,7 +241,7 @@ namespace PhoneBook
 
                 if (isContactRemoved)
                 {
-                    Console.WriteLine("Succeeded");
+                    Console.WriteLine("\nThis contact was successfully removed");
                 }
 
                 WriteContactList(currentContacts);
@@ -253,7 +253,7 @@ namespace PhoneBook
             if (!IsContactListEmpty(ReadContactList()))
             {
                 WriteContact(false, null);
-                Console.WriteLine("\nSucceeded");
+                Console.WriteLine("\nYour contact list was successfully removed");
             }
         }
 
@@ -362,12 +362,14 @@ namespace PhoneBook
 
         public override bool Equals(object obj)
         {
-            if (obj == null || GetType() != obj.GetType())
+            Contact contact = (Contact)obj;
+
+            if (contact == null)
             {
                 return false;
             }
 
-            return name == ((Contact)obj).name && phoneNumber == ((Contact)obj).phoneNumber;
+            return name == contact.name && phoneNumber == contact.phoneNumber;
         }
     }
 }
