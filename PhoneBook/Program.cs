@@ -112,18 +112,18 @@ namespace PhoneBook
             }
         }
 
-        void WriteContact(bool appendContact, Contact contactToWrite)
+        void WriteContactList(List<Contact> contactListToWrite)
         {
-            using (StreamWriter contactStreamWriter = new StreamWriter(contactsFile, appendContact))
+            using (StreamWriter contactStreamWriter = new StreamWriter(contactsFile))
             {
-                if (contactToWrite != null)
+                string contactsToWrite = "";
+
+                foreach (Contact contactToWrite in contactListToWrite)
                 {
-                    contactStreamWriter.WriteLine(contactToWrite.name + contactDataSeparator + contactToWrite.phoneNumber);
+                    contactsToWrite += contactToWrite.name + contactDataSeparator + contactToWrite.phoneNumber + "\n\r";
                 }
-                else
-                {
-                    contactStreamWriter.Write(contactToWrite);
-                }
+
+                contactStreamWriter.Write(contactsToWrite);
             }   
         }
 
@@ -148,9 +148,7 @@ namespace PhoneBook
 
         Contact SearchContact(string contactDataToSearch)
         {
-            List<Contact> currentContacts = ReadContactList();
-
-            foreach (Contact currentContact in currentContacts)
+            foreach (Contact currentContact in ReadContactList())
             {
                 if (currentContact.name == contactDataToSearch || currentContact.phoneNumber == contactDataToSearch)
                 {
@@ -181,26 +179,30 @@ namespace PhoneBook
         {
             if (DoesContactExist(contactToCreate) && DoesPhoneNumberContainOnlyDigits(contactToCreate.phoneNumber))
             {
-                WriteContact(true, contactToCreate);
+                List<Contact> currentContactList = ReadContactList();
+
+                currentContactList.Add(contactToCreate);
+                WriteContactList(currentContactList);
+
                 Console.WriteLine("\nThis contact was successfully created");
             }
         }
 
         void UpdateContact(string contactData, Contact newContact)
         {
-            List<Contact> currentContacts = new List<Contact>(ReadContactList());
+            List<Contact> currentContactList = ReadContactList();
 
             if (DoContactDataExist(contactData) && DoesContactExist(newContact) &&
-                DoesPhoneNumberContainOnlyDigits(newContact.phoneNumber) && !IsContactListEmpty(currentContacts))
+                DoesPhoneNumberContainOnlyDigits(newContact.phoneNumber) && !IsContactListEmpty(currentContactList))
             {
                 Contact searchedContact = SearchContact(contactData);
                 
-                for (int i = currentContacts.Count - 1; i >= 0; i--)
+                for (int i = currentContactList.Count - 1; i >= 0; i--)
                 {
-                    if (searchedContact.Equals(currentContacts[i]))
+                    if (searchedContact.Equals(currentContactList[i]))
                     {
-                        currentContacts.Remove(currentContacts[i]);
-                        currentContacts.Add(newContact);
+                        currentContactList.Remove(currentContactList[i]);
+                        currentContactList.Add(newContact);
 
                         Console.WriteLine("\nThis contact was successfully updated");
                         Console.WriteLine($"{searchedContact.name} --> {newContact.name}");
@@ -208,43 +210,26 @@ namespace PhoneBook
                     }
                 }
 
-                for (int i = 0; i < currentContacts.Count; i++)
-                {
-                    if (i == 0)
-                    {
-                        WriteContact(false, currentContacts[i]);
-                        continue;
-                    }
-
-                    WriteContact(true, currentContacts[i]);
-                }
+                WriteContactList(currentContactList);
             }
         }
 
         void RemoveContact(string contactData)
         {
-            List<Contact> currentContacts = ReadContactList();
+            List<Contact> currentContactList = ReadContactList();
 
-            if (DoContactDataExist(contactData) && !IsContactListEmpty(currentContacts))
+            if (DoContactDataExist(contactData) && !IsContactListEmpty(currentContactList))
             {
-                bool isContactRemoved = false;
-                Contact searchedContact = SearchContact(contactData);
-
-                for (int i = currentContacts.Count - 1; i >= 0; i--)
+                for (int i = currentContactList.Count - 1; i >= 0; i--)
                 {
-                    if (searchedContact.Equals(currentContacts[i]))
+                    if (SearchContact(contactData).Equals(currentContactList[i]))
                     {
-                        currentContacts.Remove(currentContacts[i]);
-                        isContactRemoved = true;
+                        currentContactList.Remove(currentContactList[i]);
+                        Console.WriteLine("\nThis contact was successfully removed");
                     }
                 }
 
-                if (isContactRemoved)
-                {
-                    Console.WriteLine("\nThis contact was successfully removed");
-                }
-
-                WriteContactList(currentContacts);
+                WriteContactList(currentContactList);
             }
         }
 
@@ -252,7 +237,7 @@ namespace PhoneBook
         {
             if (!IsContactListEmpty(ReadContactList()))
             {
-                WriteContact(false, null);
+                WriteContactList(new List<Contact>());
                 Console.WriteLine("\nYour contact list was successfully removed");
             }
         }
@@ -327,26 +312,6 @@ namespace PhoneBook
                 }
             }
         }
-
-        void WriteContactList(List<Contact> contactsToWrite)
-        {
-            if (contactsToWrite.Count == 0)
-            {
-                RemoveContactList();
-                return;
-            }
-
-            for (int i = 0; i < contactsToWrite.Count; i++)
-            {
-                if (i == 0)
-                {
-                    WriteContact(false, contactsToWrite[i]);
-                    continue;
-                }
-
-                WriteContact(true, contactsToWrite[i]);
-            }
-        }
     }
 
     class Contact
@@ -362,7 +327,7 @@ namespace PhoneBook
 
         public override bool Equals(object obj)
         {
-            Contact contact = (Contact)obj;
+            Contact contact = obj as Contact;
 
             if (contact == null)
             {
