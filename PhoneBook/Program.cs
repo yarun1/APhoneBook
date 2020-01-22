@@ -9,7 +9,7 @@ namespace PhoneBook
         string contactsFile = "Contacts.csv";
         const char contactDataSeparator = ',';
 
-        static void Main()
+        static void Main(string[] args)
         {
             Program program = new Program();
 
